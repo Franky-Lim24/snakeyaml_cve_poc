@@ -4,6 +4,7 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
 import java.util.Map;
 import java.util.*;
 
@@ -59,9 +60,20 @@ public class App {
             String body = req.body();
 
             InputStream inputStream = new ByteArrayInputStream(body.getBytes());
-            Yaml yaml = new Yaml(new Constructor(Student.class));
-            Student data = yaml.load(inputStream);
-            System.out.println(data);
+            LoaderOptions loaderOptions = new LoaderOptions();
+            loaderOptions.setAllowRecursiveKeys(false); // prevent recursive keys
+            loaderOptions.setMaxAliasesForCollections(50); // limits the number of aliases expansion to prevent DoS
+            try {
+                Yaml yaml = new Yaml(new SafeConstructor(loaderOptions)); // use SafeConstructor to prevent arbitrary code execution
+                Student data = yaml.loadAs(inputStream, Student.class);
+                System.out.println(data);
+                
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage());
+                res.status(400);
+                res.type("text/plain");
+                return "Error: " + e.getMessage();
+            }
 
             res.type("text/plain");
             return "File Read, Object Created";
